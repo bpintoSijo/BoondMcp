@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.util.UriBuilder;
+
+import java.util.function.Consumer;
 
 @Component
 public class PythonBackendClient {
@@ -38,40 +41,42 @@ public class PythonBackendClient {
                     .bodyToMono(responseType)
                     .block();
         } catch (WebClientResponseException ex) {
-            log.warn("Python backend returned error {} on POST {} : {}",
-                    ex.getStatusCode(), path, ex.getResponseBodyAsString());
             throw new PythonBackendException(
-                    "Python backend returned " + ex.getStatusCode() + " on " + path, ex);
+                    "Python backend returned " + ex.getStatusCode() + " on POST " + path, ex);
         } catch (WebClientRequestException ex) {
-            log.error("Failed to reach Python backend on POST {}", path, ex);
-            throw new PythonBackendException("Unable to reach Python backend on " + path, ex);
+            throw new PythonBackendException("Unable to reach Python backend on POST " + path, ex);
         } catch (RuntimeException ex) {
-            log.error("Unexpected error while calling Python backend on POST {}", path, ex);
-            throw new PythonBackendException("Unexpected error while calling Python backend on " + path, ex);
+            throw new PythonBackendException("Unexpected error while calling Python backend on POST " + path, ex);
         }
     }
 
     public <T> T get(String path, ParameterizedTypeReference<T> responseType) {
+        return get(path, builder -> {}, responseType);
+    }
+
+    public <T> T get(String path,
+                     Consumer<UriBuilder> uriCustomizer,
+                     ParameterizedTypeReference<T> responseType) {
         String correlationId = MDC.get(MdcKeys.CORRELATION_ID);
         log.debug("Calling Python backend GET {}{}", properties.baseUrl(), path);
         try {
             return webClient.get()
-                    .uri(path)
+                    .uri(uriBuilder -> {
+                        uriBuilder.path(path);
+                        uriCustomizer.accept(uriBuilder);
+                        return uriBuilder.build();
+                    })
                     .header(CorrelationIdFilter.HEADER_NAME, correlationId == null ? "" : correlationId)
                     .retrieve()
                     .bodyToMono(responseType)
                     .block();
         } catch (WebClientResponseException ex) {
-            log.warn("Python backend returned error {} on GET {} : {}",
-                    ex.getStatusCode(), path, ex.getResponseBodyAsString());
             throw new PythonBackendException(
-                    "Python backend returned " + ex.getStatusCode() + " on " + path, ex);
+                    "Python backend returned " + ex.getStatusCode() + " on GET " + path, ex);
         } catch (WebClientRequestException ex) {
-            log.error("Failed to reach Python backend on GET {}", path, ex);
-            throw new PythonBackendException("Unable to reach Python backend on " + path, ex);
+            throw new PythonBackendException("Unable to reach Python backend on GET " + path, ex);
         } catch (RuntimeException ex) {
-            log.error("Unexpected error while calling Python backend on GET {}", path, ex);
-            throw new PythonBackendException("Unexpected error while calling Python backend on " + path, ex);
+            throw new PythonBackendException("Unexpected error while calling Python backend on GET " + path, ex);
         }
     }
 }
