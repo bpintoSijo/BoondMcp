@@ -7,9 +7,12 @@ spring:
   ai:
     mcp:
       server:
-        name: boond-mcp
-        version: 0.0.1
+        name: smart-search-boond-mcp
+        version: @project.version@
         type: SYNC
+        protocol: STREAMABLE
+        streamable-http:
+          mcp-endpoint: /mcp
 
 mcp:
   python:
