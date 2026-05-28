@@ -49,7 +49,9 @@ The MCP Server owns:
 * Transport handling (Streamable HTTP).
 * Request validation.
 * Correlation ID propagation.
-* Communication with the Python backend.
+* Authentication and communication with BoondManager APIs.
+* DTO normalization and query parameter construction.
+* Business-oriented deterministic recruitment tools.
 
 The Python Backend (FastAPI + LangGraph) owns:
 
@@ -57,34 +59,43 @@ The Python Backend (FastAPI + LangGraph) owns:
 * LangGraph workflows.
 * Candidate ranking and scoring.
 * Reasoning and business intelligence.
-* BoondManager interaction orchestration.
+* Conversation memory and agent workflows.
+* MCP tool orchestration.
+
+The Python backend must never call BoondManager APIs directly.
+
+All BoondManager interactions must go through the MCP Server.
 
 The MCP Server must not:
 
-* Implement business intelligence or AI reasoning.
+* Implement autonomous AI reasoning.
 * Implement LangGraph workflows or agent state machines.
 * Expose raw BoondManager API endpoints.
-* Contain domain decision logic.
+* Contain opaque AI scoring logic.
 * Use hardcoded enums for reference data (skills, contract types, etc.).
 
 ---
 
 ## Agent Pattern
 
-All intelligence is delegated to the Python LangGraph backend.
+All BoondManager access is centralized inside the MCP Server.
 
-The MCP Server only exposes deterministic, business-oriented tools. Tools must:
+The Python backend consumes MCP tools instead of directly calling BoondManager APIs.
+
+The MCP Server exposes deterministic, business-oriented tools. Tools must:
 
 * Express business intent (not CRUD operations).
 * Remain deterministic and stateless.
-* Be composable and reusable by the agent.
-* Delegate ranking, scoring, and reasoning to the Python backend.
+* Be composable and reusable by AI agents.
+* Encapsulate BoondManager API complexity.
+* Dynamically resolve all reference data through dictionary endpoints.
 
 Do not implement:
 
 * Custom MCP dispatcher or tool registry.
 * ChatClient architecture.
-* Business decision logic inside tools.
+* Autonomous AI decision-making inside tools.
+* Hidden ranking or scoring logic inside the MCP layer.
 
 ---
 
@@ -132,14 +143,17 @@ All parameters are optional. Null parameters are never sent as query params to B
 * Constructor injection only.
 * All reference data (skills, languages, contract types) must be resolved via `/application/dictionary` — no hardcoded enums.
 * Use `UriComponentsBuilder` for dynamic query params — never append null values to requests.
-* Delegate all ranking, scoring, and reasoning to the Python backend via WebClient.
+* The MCP Server communicates directly with BoondManager APIs using WebClient.
+* The Python backend consumes MCP tools instead of accessing BoondManager directly.
+* Keep MCP tools deterministic and business-oriented.
+* Delegate non-deterministic AI reasoning and orchestration to the Python backend.
 
 ---
 
 ## Package Structure
 
 ```
-com.sijo.boondmcp
+com.sijo.mcpboondmanager
 ├── client         ← WebClient beans (BoondManager + Python backend)
 ├── config         ← @ConfigurationProperties, Spring config
 ├── dto            ← explicit request/response records

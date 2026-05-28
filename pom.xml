@@ -13,9 +13,9 @@
 	</parent>
 
 	<groupId>com.sijo</groupId>
-	<artifactId>BoondMCP</artifactId>
+	<artifactId>mcp-boondmanager</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>BoondMCP</name>
+	<name>mcp-boondmanager</name>
 	<description>Spring AI MCP Server</description>
 	<packaging>jar</packaging>
 
@@ -89,7 +89,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<mainClass>com.sijo.boondmcp.BoondMcpApplication</mainClass>
+					<mainClass>com.sijo.mcpboondmanager.McpBoondmanagerApplication</mainClass>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
