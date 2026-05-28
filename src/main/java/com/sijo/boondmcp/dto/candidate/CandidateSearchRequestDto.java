@@ -1,5 +1,8 @@
 package com.sijo.boondmcp.dto.candidate;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 public record CandidateSearchRequestDto(
         String keywords,
         Integer state,
@@ -15,7 +18,10 @@ public record CandidateSearchRequestDto(
         Double maxSalary,
         Double minTjm,
         Double maxTjm,
+        @Min(1)
         Integer page,
+        @Min(1)
+        @Max(100)
         Integer numberPerPage
 ) {
 }
