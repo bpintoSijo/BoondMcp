@@ -17,6 +17,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>BoondMCP</name>
 	<description>Spring AI MCP Server</description>
+	<packaging>jar</packaging>
 
 	<properties>
 		<java.version>21</java.version>
@@ -47,12 +48,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-
-		<!-- AspectJ (centralized audit/logging around @Tool methods) -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-aspectj</artifactId>
 		</dependency>
 
 		<!-- Bean Validation for configuration and DTO input constraints -->
@@ -94,6 +89,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<mainClass>com.sijo.boondmcp.BoondMcpApplication</mainClass>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
@@ -101,6 +97,14 @@
 						</exclude>
 					</excludes>
 				</configuration>
+				<executions>
+					<execution>
+						<id>repackage</id>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

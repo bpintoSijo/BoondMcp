@@ -1,419 +1,181 @@
-# CLAUDE.md
+# Claude Code Instructions: MCP Server
+
+This file defines implementation rules for Claude Code when working in the MCP Server project.
+
+## Scope
+
+Work only inside this project unless the user explicitly expands the scope.
+
+Before implementation, read:
+
+* [Project Overview](#project-overview)
+* [Architecture Boundaries](#architecture-boundaries)
+* [MCP Tools Specification](#mcp-tools-specification)
+* [Implementation Rules](#implementation-rules)
+* [Package Structure](#package-structure)
+
+---
 
 ## Project Overview
 
-This project is an MCP (Model Context Protocol) Server built with:
-- Java 21
-- Spring Boot 4.x
-- Spring AI
+This project is an MCP (Model Context Protocol) Server — the standardized gateway between AI agents and BoondManager APIs, dedicated to HR and recruitment teams.
 
-The MCP server acts as:
-- MCP tool exposure layer
-- transport abstraction layer
-- protocol standardization layer
-- audit/logging gateway
-- bridge to Python AI backend
-
-The MCP server is NOT responsible for:
-- agent orchestration
-- long reasoning workflows
-- AI memory management
-- business decision making
-- complex AI state machines
-
-Those responsibilities belong to the Python backend built with:
-- FastAPI
-- LangGraph
-
-The Python backend is the AI orchestration layer.
+The AI assistant helps recruiters:
+* Simplify candidate search
+* Accelerate sourcing workflows
+* Reduce repetitive actions
+* Improve access to recruitment information
+* Assist decision-making during recruitment processes
 
 ---
 
-## Business Goal
+## Required Stack
 
-The goal of this project is to provide an AI assistant dedicated to HR and recruitment teams.
-
-The AI assistant should help recruiters:
-- simplify candidate search
-- accelerate sourcing workflows
-- reduce repetitive actions
-- improve access to recruitment information
-- streamline interactions with BoondManager
-- assist decision-making during recruitment processes
-
-The system provides a natural language interface for:
-- candidate search
-- mission exploration
-- profile summarization
-- recruitment automation
-
-The MCP server acts as the standardized gateway between:
-- AI agents
-- recruitment tools
-- business workflows
-- BoondManager APIs
-
-The project aims to build an enterprise-grade AI recruitment assistant platform that is:
-- maintainable
-- extensible
-- observable
-- secure-ready
-- scalable
+* Java 21
+* Spring Boot 4.x
+* Spring AI
+* Spring WebFlux (WebClient)
+* Constructor injection only
+* Records and immutable objects preferred
 
 ---
 
-# Global Architecture
+## Architecture Boundaries
 
-Frontend / MCP Client
-↓
-LLM / Agent
-↓
-MCP Server (Spring Boot + Spring AI)
-↓
-Python Backend (FastAPI + LangGraph)
-↓
-BoondManager API
+The MCP Server owns:
 
----
+* MCP tool exposure.
+* BoondManager API abstraction.
+* Transport handling (Streamable HTTP).
+* Request validation.
+* Correlation ID propagation.
+* Communication with the Python backend.
 
-# Architectural Principles
+The Python Backend (FastAPI + LangGraph) owns:
 
-- Keep architecture pragmatic and minimal
-- Prefer clarity over abstraction
-- Avoid over-engineering
-- Use explicit DTOs
-- Keep deterministic behavior
-- Maintain loose coupling between layers
-- Keep MCP server thin (protocol layer only)
+* AI orchestration.
+* LangGraph workflows.
+* Candidate ranking and scoring.
+* Reasoning and business intelligence.
+* BoondManager interaction orchestration.
 
----
+The MCP Server must not:
 
-# MCP Server Responsibilities
-
-The MCP server is responsible for:
-- exposing MCP tools
-- request validation
-- transport handling
-- structured logging
-- correlation ID propagation
-- tool execution orchestration (via Spring AI)
-- communication with Python backend
-
-It must NOT:
-- implement business intelligence
-- implement AI reasoning
-- implement workflows
-- contain domain decision logic
+* Implement business intelligence or AI reasoning.
+* Implement LangGraph workflows or agent state machines.
+* Expose raw BoondManager API endpoints.
+* Contain domain decision logic.
+* Use hardcoded enums for reference data (skills, contract types, etc.).
 
 ---
 
-# MCP + Spring AI Design
+## Agent Pattern
 
-This project uses:
+All intelligence is delegated to the Python LangGraph backend.
 
-- Spring AI MCP tool support
-- @Tool annotations
-- no custom MCP dispatcher
-- no custom tool registry
-- no MCP protocol reimplementation
+The MCP Server only exposes deterministic, business-oriented tools. Tools must:
 
-Spring AI is responsible for:
-- tool discovery
-- tool execution
-- tool invocation lifecycle
+* Express business intent (not CRUD operations).
+* Remain deterministic and stateless.
+* Be composable and reusable by the agent.
+* Delegate ranking, scoring, and reasoning to the Python backend.
 
----
+Do not implement:
 
-# MCP Tools Specification (BoondManager Domain)
-
-All tools are business-level abstractions over BoondManager.
-
-No raw API exposure is allowed.
+* Custom MCP dispatcher or tool registry.
+* ChatClient architecture.
+* Business decision logic inside tools.
 
 ---
 
-## 1. Candidate Search & Exploration
+## MCP Tools Specification
 
-### find_candidates
-Search candidates based on filters:
-- skills
-- location
-- availability
-- experience
-- contract type
+### 1. Implemented — Candidate Search & Exploration
+
+| Tool | Class | Description |
+|---|---|---|
+| `getDictionary` | `BoondDictionaryTool` | Retrieves all BoondManager reference data (diploma levels, contract types, availability types, experience levels, expertise areas, activity sectors, tools, languages, candidate states). Must be called before `searchCandidates` to resolve human-readable values to their IDs. |
+| `searchCandidates` | `CandidateSearchTool` | Searches candidates with optional filters: keywords (full-text), state, availabilityType, availabilityDate, contractType, experience, training, expertiseAreas, activityAreas, mobilityArea, salary range, TJM range, pagination. Returns a paginated list of profiles. |
+| `getCandidateDetail` | `CandidateDetailTool` | Retrieves the complete profile of a candidate by ID: contact details, pipeline state, contract preferences, salary/TJM expectations, mobility, recruitment metadata. Call after `searchCandidates`. |
+| `getCandidateTechnicalDocument` | `CandidateTechnicalDocTool` | Retrieves the technical document (CV/skills profile) of a candidate: skills text, expertise domains, diplomas, experience level, tools with proficiency (1–5), languages with levels. Call after `getCandidateDetail` for deep skills analysis. |
+
+**Call order enforced by descriptions:**
+`getDictionary` → `searchCandidates` → `getCandidateDetail` → `getCandidateTechnicalDocument`
+
+#### `searchCandidates` — Filter Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `keywords` | `String` | Full-text search. Operators: `+term`, `"exact phrase"`. Covers CV, TD, name, title, email, phone. |
+| `state` | `Integer` | Candidate state ID — from `getDictionary: setting.state.candidate` |
+| `availabilityType` | `Integer` | Availability type ID — from `getDictionary: setting.availability`. `9` = available after date. |
+| `availabilityDate` | `String` | ISO 8601 (`yyyy-MM-dd`). Used with `availabilityType = 9`. |
+| `contractType` | `Integer` | Contract type ID — from `getDictionary: setting.typeOf.contract` |
+| `experience` | `Integer` | Experience level ID — from `getDictionary: setting.experience` |
+| `training` | `String` | Diploma level ID — from `getDictionary: setting.training` |
+| `expertiseAreas` | `String` | Pipe-separated expertise area IDs. Example: `"backend\|microservices"` |
+| `activityAreas` | `String` | Pipe-separated activity sector IDs. Example: `"finance\|industry"` |
+| `mobilityArea` | `String` | Mobility zone ID — from `getDictionary: setting.mobilityArea` |
+| `minSalary` / `maxSalary` | `Double` | Salary range filter (€/year) |
+| `minTjm` / `maxTjm` | `Double` | Daily rate range filter (€/day) |
+| `page` / `numberPerPage` | `Integer` | Pagination. Default: page=1, numberPerPage=25, max=100 |
+
+All parameters are optional. Null parameters are never sent as query params to BoondManager.
+
+---
+## Implementation Rules
+
+* Keep tools business-oriented — no CRUD naming (`find_best_candidates` OK / `getCandidateById` KO).
+* No raw BoondManager API exposure through tools.
+* Use `@Tool` annotations and `ToolCallbackProvider` — no custom MCP dispatcher.
+* Use explicit DTOs with records where possible — no field injection.
+* Constructor injection only.
+* All reference data (skills, languages, contract types) must be resolved via `/application/dictionary` — no hardcoded enums.
+* Use `UriComponentsBuilder` for dynamic query params — never append null values to requests.
+* Delegate all ranking, scoring, and reasoning to the Python backend via WebClient.
 
 ---
 
-### find_matching_candidates
-Mission-based intelligent search.
+## Package Structure
 
----
-
-### get_candidate_profile
-Full enriched candidate profile:
-- TAB_PROFIL
-- TAB_DT
-- skills
-- availability
-
----
-
-### get_candidate_summary
-AI-generated short summary.
-
----
-
-### check_candidate_availability
-Availability validation based on:
-- PARAM_DATEDISPO
-- assignments
-
----
-
-### get_candidate_assignments
-Returns missions history.
-
----
-
-## 2. Matching Intelligence (Python-driven)
-
-### find_best_candidates
-Returns ranked candidates for a mission.
-
-Pipeline:
-- Boond retrieval
-- Python LangGraph ranking
-- scoring + explanation
-
----
-
-### rank_candidates
-Re-ranks candidates based on mission context.
-
----
-
-### explain_candidate
-Explains candidate fit using Python backend reasoning.
-
----
-
-## 3. Dictionary / Reference Data
-
-### list_skills
-### search_skills
-### list_languages
-### list_contract_types
-### list_candidate_statuses
-
-All rely on:
-- `/application/dictionary`
-
----
-
-## 4. Missions
-
-### list_missions
-### search_missions
-### get_mission_details
-
----
-
-## 5. Reporting (optional)
-
-### summarize_recruitment_activity
-
----
-
-## 6. Recommendation Engine
-
-### recommend_candidates
-AI-driven candidate recommendation.
-
-### auto_shortlist_candidates
-Automatic shortlist generation.
-
----
-
-# Design Rules (CRITICAL)
-
-- MCP tools MUST remain business-oriented
-- No CRUD tools exposed
-- No raw BoondManager API exposure
-- All intelligence is delegated to Python LangGraph
-- Spring AI only orchestrates tool execution
-
----
-
-# Dictionary Dependency Rule
-
-All candidate-related logic must rely on:
-- skills
-- languages
-- contract types
-- availability states
-- evaluation statuses
-
-No hardcoded enums allowed.
-
----
-
-# Python Backend Responsibilities
-
-The Python backend handles:
-- AI orchestration
-- LangGraph workflows
-- ranking
-- reasoning
-- BoondManager interaction
-- business intelligence
-
----
-
-# Package Structure
-
+```
 com.sijo.boondmcp
-├── audit
-├── client
-├── config
-├── dto
-├── exception
-├── infrastructure
-├── service
-└── tools
+├── client         ← WebClient beans (BoondManager + Python backend)
+├── config         ← @ConfigurationProperties, Spring config
+├── dto            ← explicit request/response records
+├── exception      ← typed exceptions, global handler
+├── infrastructure ← low-level HTTP adapters
+├── service        ← BoondManager service layer
+└── tools          ← @Tool-annotated classes
+```
 
 ---
 
-# Java Conventions
+## Configuration
 
-- Java 21
-- Spring Boot 4.x
-- constructor injection only
-- prefer records
-- immutable objects
-- explicit DTOs
-- no field injection
+All external systems must be configured via `application.yml` + `@ConfigurationProperties`.
+
+Never hardcode URLs, credentials, or ports.
 
 ---
 
-# Tool Design Principles
+## Testing
 
-Tools must:
-- express business intent
-- remain deterministic
-- avoid CRUD naming
-- be composable
-
-Good:
-- find_best_candidates
-- explain_candidate
-
-Bad:
-- getCandidateById
-- updateField
+* Mock BoondManager HTTP responses in unit tests — never call BoondManager directly.
+* Test tools independently from the transport layer.
+* Test service layer with controlled WebClient mocks.
+* Do not write tests that depend on a live Python backend.
 
 ---
 
-# Communication with Python Backend
+## Acceptance Criteria
 
-- HTTP (WebClient)
-- JSON DTOs
-- centralized client
-- strict timeouts
-- explicit error handling
-- typed payloads preferred
+An implementation is acceptable when:
 
----
-
-# Observability
-
-Mandatory:
-- correlationId (MDC)
-- structured logs
-- tool execution logs
-- duration tracking
-
----
-
-# Streaming Strategy
-
-Must remain transport-agnostic.
-
-Do NOT couple to SSE.
-
-Future-ready for:
-- streamable HTTP
-- partial responses
-- async tool execution
-
----
-
-# Error Handling
-
-- global exception handler
-- explicit exception types
-- no raw stack exposure
-- consistent error format
-
----
-
-# Configuration
-
-All external systems must be configured via:
-
-application.yml + @ConfigurationProperties
-
-Never hardcode:
-- URLs
-- credentials
-- ports
-
----
-
-Example:
-
-mcp:
-python:
-base-url: http://localhost:8000
-timeout: 5s
-
----
-
-# Security Preparation
-
-Must remain compatible with:
-- JWT
-- RBAC
-- API keys
-- audit logs
-
----
-
-# Audit Preparation
-
-Prepare extension points for:
-- tool execution history
-- user tracking
-- compliance logs
-
----
-
-# Forbidden Patterns
-
-Do NOT introduce:
-- MCP custom dispatcher
-- MCP registry
-- ChatClient architecture
-- Kafka
-- CQRS
-- event sourcing
-- over-engineered DDD
-
----
-
-# Development Philosophy
-
-- simplicity first
-- explicit over implicit
-- minimal abstraction
-- production-ready code
-- maintainable architecture
+* Tools express business intent and are not CRUD wrappers.
+* MCP is the only path to BoondManager data.
+* All reference data is resolved dynamically via dictionary tools.
+* Python backend is the only source of ranking and AI reasoning.
+* Error handling is structured, typed, and user-safe.
+* No hardcoded values exist for URLs, credentials, or reference data.
+* Correlation IDs are propagated through all tool executions.
