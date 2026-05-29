@@ -17,7 +17,7 @@ spring:
 boondmanager:
   base-url: ${BOONDMANAGER_BASE_URL}
   jwt-client: ${BOONDMANAGER_JWT_CLIENT}
-  timeout: ${BOONDMANAGER_TIMEOUT:5s}
+  timeout: ${BOONDMANAGER_TIMEOUT:15s}
 
 logging:
   pattern:

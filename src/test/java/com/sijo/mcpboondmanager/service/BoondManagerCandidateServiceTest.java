@@ -4,7 +4,9 @@ import com.sijo.mcpboondmanager.client.BoondManagerClient;
 import com.sijo.mcpboondmanager.dto.boond.BoondCandidateDetailAttributes;
 import com.sijo.mcpboondmanager.dto.boond.BoondCandidateSummaryAttributes;
 import com.sijo.mcpboondmanager.dto.boond.BoondData;
-import com.sijo.mcpboondmanager.dto.boond.BoondDictionaryAttributes;
+import com.sijo.mcpboondmanager.dto.boond.BoondDictionaryData;
+import com.sijo.mcpboondmanager.dto.boond.BoondDictionaryEnvelope;
+import com.sijo.mcpboondmanager.dto.boond.BoondDictionarySetting;
 import com.sijo.mcpboondmanager.dto.boond.BoondListEnvelope;
 import com.sijo.mcpboondmanager.dto.boond.BoondMeta;
 import com.sijo.mcpboondmanager.dto.boond.BoondSingleEnvelope;
@@ -49,7 +51,7 @@ class BoondManagerCandidateServiceTest {
 
     @Test
     void givenDictionaryEndpoint_whenGetDictionary_thenMapsEnvelopeToMcpResponse() {
-        BoondSingleEnvelope<BoondDictionaryAttributes> envelope = dictionaryEnvelope();
+        BoondDictionaryEnvelope envelope = dictionaryEnvelope();
         when(client.get(eq("/application/dictionary"), any(ParameterizedTypeReference.class)))
                 .thenReturn(envelope);
 
@@ -62,7 +64,7 @@ class BoondManagerCandidateServiceTest {
                 .extracting(DictionaryEntryDto::id)
                 .containsExactly("2");
         assertThat(response.setting().mobilityArea())
-                .extracting(entry -> entry.option().id())
+                .extracting(entry -> entry.option().getFirst().id())
                 .containsExactly("idf");
     }
 
@@ -206,13 +208,13 @@ class BoondManagerCandidateServiceTest {
         return new BoondManagerCandidateService(client);
     }
 
-    private BoondSingleEnvelope<BoondDictionaryAttributes> dictionaryEnvelope() {
-        BoondDictionaryAttributes attrs = new BoondDictionaryAttributes(
-                new BoondDictionaryAttributes.State(List.of(new DictionaryEntryDto("1", "Active"))),
-                new BoondDictionaryAttributes.TypeOf(List.of(new DictionaryEntryDto("2", "CDI"))),
+    private BoondDictionaryEnvelope dictionaryEnvelope() {
+        BoondDictionarySetting setting = new BoondDictionarySetting(
+                new BoondDictionarySetting.State(List.of(new DictionaryEntryDto("1", "Active"))),
+                new BoondDictionarySetting.TypeOf(List.of(new DictionaryEntryDto("2", "CDI"))),
                 List.of(new DictionaryEntryDto("9", "Available after date")),
                 List.of(new DictionaryOptionEntryDto(
-                        new DictionaryOptionEntryDto.OptionId("idf"), "Ile-de-France")),
+                        List.of(new DictionaryOptionEntryDto.OptionId("idf", "Ile-de-France")), "Ile-de-France")),
                 List.of(new DictionaryEntryDto("3", "Senior")),
                 List.of(new DictionaryEntryDto("bac5", "Bac+5")),
                 List.of(new DictionaryEntryDto("backend", "Backend")),
@@ -223,7 +225,7 @@ class BoondManagerCandidateServiceTest {
                 List.of(new DictionaryEntryDto("4", "Excellent")),
                 List.of(new DictionaryEntryDto("1", "LinkedIn"))
         );
-        return new BoondSingleEnvelope<>(new BoondData<>("dictionary", "setting", attrs));
+        return new BoondDictionaryEnvelope(new BoondDictionaryData(setting));
     }
 
     private BoondListEnvelope<BoondCandidateSummaryAttributes> searchEnvelope() {

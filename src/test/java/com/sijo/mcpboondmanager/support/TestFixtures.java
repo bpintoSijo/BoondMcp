@@ -150,7 +150,7 @@ public final class TestFixtures {
         DictionaryEntryDto contract = new DictionaryEntryDto("2", "CDI");
         DictionaryEntryDto availability = new DictionaryEntryDto("9", "Available after date");
         DictionaryOptionEntryDto mobility = new DictionaryOptionEntryDto(
-                new DictionaryOptionEntryDto.OptionId("idf"),
+                List.of(new DictionaryOptionEntryDto.OptionId("idf", "Ile-de-France")),
                 "Ile-de-France"
         );
 

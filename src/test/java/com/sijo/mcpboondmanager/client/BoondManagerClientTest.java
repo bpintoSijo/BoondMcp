@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.MDC;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.unit.DataSize;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -75,9 +76,9 @@ class BoondManagerClientTest {
                     "id": "dictionary",
                     "type": "setting",
                     "attributes": {
-                      "state": {"candidate": [{"id": "1", "label": "Active"}]},
-                      "availability": [{"id": "9", "label": "Available"}],
-                      "mobilityArea": [{"option": {"id": "idf"}, "label": "Ile-de-France"}]
+                      "state": {"candidate": [{"id": "1", "value": "Active"}]},
+                      "availability": [{"id": "9", "value": "Available"}],
+                      "mobilityArea": [{"option": [{"id": "idf", "value": "Paris"}], "value": "Ile-de-France"}]
                     }
                   }
                 }
@@ -247,7 +248,8 @@ class BoondManagerClientTest {
         return new BoondManagerProperties(
                 "http://localhost:" + server.getAddress().getPort(),
                 "test-jwt",
-                timeout);
+                timeout,
+                new BoondManagerProperties.Webclient(DataSize.ofMegabytes(16)));
     }
 
     private void respondJson(String path, int status, String body) {

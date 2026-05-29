@@ -4,7 +4,8 @@ import com.sijo.mcpboondmanager.client.BoondManagerClient;
 import com.sijo.mcpboondmanager.dto.boond.BoondCandidateDetailAttributes;
 import com.sijo.mcpboondmanager.dto.boond.BoondCandidateSummaryAttributes;
 import com.sijo.mcpboondmanager.dto.boond.BoondData;
-import com.sijo.mcpboondmanager.dto.boond.BoondDictionaryAttributes;
+import com.sijo.mcpboondmanager.dto.boond.BoondDictionaryEnvelope;
+import com.sijo.mcpboondmanager.dto.boond.BoondDictionarySetting;
 import com.sijo.mcpboondmanager.dto.boond.BoondListEnvelope;
 import com.sijo.mcpboondmanager.dto.boond.BoondMeta;
 import com.sijo.mcpboondmanager.dto.boond.BoondSingleEnvelope;
@@ -36,7 +37,7 @@ public class BoondManagerCandidateService {
     static final String DICTIONARY_PATH = "/application/dictionary";
     static final String CANDIDATES_PATH = "/candidates";
 
-    private static final ParameterizedTypeReference<BoondSingleEnvelope<BoondDictionaryAttributes>> DICTIONARY_TYPE =
+    private static final ParameterizedTypeReference<BoondDictionaryEnvelope> DICTIONARY_TYPE =
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<BoondListEnvelope<BoondCandidateSummaryAttributes>> SEARCH_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -53,8 +54,7 @@ public class BoondManagerCandidateService {
 
     public DictionaryResponseDto getDictionary() {
         try {
-            BoondSingleEnvelope<BoondDictionaryAttributes> envelope =
-                    client.get(DICTIONARY_PATH, DICTIONARY_TYPE);
+            BoondDictionaryEnvelope envelope = client.get(DICTIONARY_PATH, DICTIONARY_TYPE);
             return toDictionaryResponse(envelope);
         } catch (BoondApiException ex) {
             throw new DictionaryResolutionException(
@@ -120,23 +120,22 @@ public class BoondManagerCandidateService {
         }
     }
 
-    private static DictionaryResponseDto toDictionaryResponse(
-            BoondSingleEnvelope<BoondDictionaryAttributes> envelope) {
-        BoondDictionaryAttributes attrs = envelope.data().attributes();
+    private static DictionaryResponseDto toDictionaryResponse(BoondDictionaryEnvelope envelope) {
+        BoondDictionarySetting setting = envelope.data().setting();
         return new DictionaryResponseDto(new DictionarySettingDto(
-                new DictionarySettingDto.State(attrs.state().candidate()),
-                new DictionarySettingDto.TypeOf(attrs.typeOf().contract()),
-                attrs.availability(),
-                attrs.mobilityArea(),
-                attrs.experience(),
-                attrs.training(),
-                attrs.expertiseArea(),
-                attrs.activityArea(),
-                attrs.tool(),
-                attrs.languageSpoken(),
-                attrs.languageLevel(),
-                attrs.evaluation(),
-                attrs.source()
+                new DictionarySettingDto.State(setting.state().candidate()),
+                new DictionarySettingDto.TypeOf(setting.typeOf().contract()),
+                setting.availability(),
+                setting.mobilityArea(),
+                setting.experience(),
+                setting.training(),
+                setting.expertiseArea(),
+                setting.activityArea(),
+                setting.tool(),
+                setting.languageSpoken(),
+                setting.languageLevel(),
+                setting.evaluation(),
+                setting.source()
         ));
     }
 

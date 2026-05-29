@@ -30,6 +30,10 @@ public class WebClientConfig {
 
         return WebClient.builder()
                 .baseUrl(properties.baseUrl())
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize((int) properties.webclient().maxInMemorySize().toBytes())
+                )
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(JWT_CLIENT_HEADER, properties.jwtClient())
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
